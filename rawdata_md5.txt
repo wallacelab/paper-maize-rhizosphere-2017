@@ -1,0 +1,6 @@
+9237393bb51ea59edab414bc3ab45df7  mapping_with_abundance.txt
+7bc12c3f5786a8f39b54706251abf51f  otu_table_80percShared_relAbundance.biom
+597c7c08a10f9e16a1eedd2a7923b164  unweighted_unifrac_dm.txt
+c69180586d442cf99f09e193b4ede255  unweighted_unifrac_pc.txt
+78f68717f414f9993bde050411a91832  weighted_unifrac_dm.txt
+4897e75f5041dd18dbe4d65249403b78  weighted_unifrac_pc.txt
