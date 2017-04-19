@@ -16,7 +16,7 @@ parser$add_argument("-s", "--subset", help="File of otus to keep; others will be
 parser$add_argument("--seed", type="integer", default=1, help="Random seed for permutations")
 parser$add_argument("-w", "--write-transformed", help="Write transformed values to this file")
 parser$add_argument("-r", "--random-perms", default=0, type="integer", help="Number of randomly scrambled datasets to run")
- parser$add_argument("-c", "--covariates", default="", help="Covariates (in model form, eg, 'AGE + (1|ENV)') for the model")
+parser$add_argument("-c", "--covariates", default="", help="Covariates (in model form, eg, 'AGE + (1|ENV)') for the model")
 parser$add_argument("--heritfile", help="Output file for heritability (includes random permutation heritabilities if specified")
 parser$add_argument("--rescale", help="Rescale this argument to a 0 to 10 range")
 parser$add_argument("--debug", default=FALSE, action="store_true", help="Debug mode")
@@ -78,14 +78,8 @@ modeldata = cbind(key, mydata)
 #Helper function to get BLUPs.
 run.lmer = function(yname, model, modeldata, target_column){
 	myformula=paste(yname, model, sep="~")
-	# Hack to handle flowering time
-# 	if(grepl("flowering", yname)){
-# 		myformula=sub(myformula, pattern="(1|date)", repl="", fixed=T)
-# 		cat("Removing 'date' covariate from",yname,"as a hack to not cancel out flowering time\n")
-# 	  }
 	subdata = subset(modeldata, is.finite(modeldata[,yname]))
 	mymodel = lmer(myformula, data=subdata)
-	## TODO: Replace with negative binomial and get ratio of deviance explained? Use pR2 model from pscl library. (with MaxLike or CU estimate? McFadden seems really small)
 	
 	# Get BLUPs
 	values = ranef(mymodel)[[target_column]] # Value for each line
@@ -109,7 +103,6 @@ merge_all = function(x,y){
 }
 
 # Run models
-
 traits=colnames(mydata)
 cat("Data has dimensions",dim(modeldata),"\n")
 results = mclapply(traits, run.lmer, model=model, modeldata=modeldata, target_column=target_column, mc.cores=args$num_cores)
@@ -131,43 +124,16 @@ names(herit) = traits
 herit=as.data.frame(t(herit))
 rownames(herit)[1]="actual"
 
-# # Do random permutations if requested
-# if(args$random_perms >0){
-#   cat("Performing",args$random_perms,"random permutations for heritability analysis\n")
-#   set.seed(1)	# For reproducibility
-#   perms = mclapply(1:args$random_perms, function(x){
-# 	  scramble=sample(1:nrow(mydata))
-# 	  tempdata = cbind(key, mydata[scramble,], make.row.names=F)
-# 	  return(tempdata)
-# 	}, mc.cores=args$num_cores, mc.preschedule=F )
-#   
-#   perm_h2 = mclapply(perms, function(x){
-# 	  gc()	# Collect garbage to hopefully help with memory issues
-# 	  myres = lapply(traits, run.lmer, model=model, modeldata=x, target_column=target_column)
-# 	  myherit = sapply(myres, function(x){x$H2})
-# 	  names(myherit) = traits
-# 	  return(myherit)
-# 	}, mc.cores=args$num_cores, mc.preschedule=F )
-#   
-#   perm_h2 = do.call(rbind, perm_h2)
-#   final_h2 = rbind(herit, perm_h2)
-#   rownames(final_h2) = c("actual", paste("perm",1:args$random_perms, sep=''))
-# }else{
-#   final_h2 = herit
-# }
-
 # Do random permutations if requested
 if(args$random_perms >0){
   cat("Performing",args$random_perms,"random permutations for heritability analysis\n")
   set.seed(args$seed)	# For reproducibility
-  perms = mclapply(1:args$random_perms, function(x){
-	  scramble=sample(1:nrow(mydata))
-# 	  tempdata = cbind(key, mydata[scramble,], make.row.names=F)
-# 	  return(tempdata)
-	}, mc.cores=args$num_cores, mc.preschedule=F )
   
+  perms = lapply(1:args$random_perms, function(x){
+	  scramble=sample(1:nrow(mydata))
+	})
+
   perm_h2 = lapply(perms, function(scramble){
-# 	  gc()	# Collect garbage to hopefully help with memory issues
 	  permdata = cbind(key, mydata[scramble,], make.row.names=F)
 	  myres = mclapply(traits, run.lmer, model=model, modeldata=permdata, target_column=target_column, mc.cores=args$num_cores, mc.preschedule=F )
 	  myherit = sapply(myres, function(x){x$H2})
@@ -182,7 +148,7 @@ if(args$random_perms >0){
   final_h2 = herit
 }
 
-
+# Write out heritability results
 if(!is.null(args$heritfile)){
   cat("Writing heritability to",args$heritfile,"\n")
   write.table(final_h2, file=args$heritfile, sep='\t', quote=F, row.names=T, col.names=T)

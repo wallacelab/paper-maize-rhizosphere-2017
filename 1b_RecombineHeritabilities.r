@@ -24,7 +24,7 @@ actuals=do.call(what=rbind, args=actuals)
 for(i in 1:nrow(actuals)){
   mismatch = actuals[i,] != actuals[1,]
   if(sum(mismatch)>0){
-	  stop(sum(mismatch),"values of actual heritabilities differ at index",i,"compared to index 1\n")
+	  stop(sum(mismatch)," values of actual heritabilities differ at index ",i," compared to index 1\n")
 	}
 }
 cat("\tAll actual values match\n")
