@@ -46,6 +46,26 @@ def main():
     fig.savefig(args.outprefix + ".png", dpi=100)
     fig.savefig(args.outprefix + ".svg", dpi=600)
 
+    # Output simple text table
+    names, h2, pvals, taxonomy = list(), list(), list(), list()
+    is_actual = data.index=="actual"
+    is_perm = ~is_actual
+    for trait in data.columns:
+        otu = re.sub(string=trait, pattern="trait_", repl="")
+        names.append(otu)
+        h2.append(data[trait].loc[is_actual][0])
+        taxonomy.append(otu_key[otu])
+        
+        # Empirical p-value
+        perms = np.array(data[trait].loc[is_perm])
+        actual = data[trait].loc[is_actual][0]
+        pvals.append(np.sum(perms >= actual)/len(perms))
+        
+
+    heritability = pd.DataFrame({"otu":names, "h2":h2, "empirical_pval":pvals, "taxonomy_string":taxonomy})
+    heritability = heritability[["otu", "h2", "empirical_pval", "taxonomy_string"]]    # Order
+    heritability = heritability.sort('h2', ascending=False)
+    heritability.to_csv(args.outprefix + ".txt", sep='\t')
 
 def parse_args():
     parser = argparse.ArgumentParser()
@@ -65,6 +85,8 @@ def parse_args():
 
 
 def plot_herits(ax, data, args, otu_key):
+    # Set up data structure to hold things for convenient output
+
     # Violin plots of random permutations
     perms = data.index != "actual"
     xticks, xlabels = list(), list()
