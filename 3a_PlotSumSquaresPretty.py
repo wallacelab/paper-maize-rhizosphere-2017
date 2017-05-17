@@ -32,6 +32,19 @@ def main():
     if args.num_pcs:
         data=data.iloc[:,:args.num_pcs]
 
+    if args.percent and args.pcfile:
+        print("\tConverting raw variance explained to percent")
+        # Read in eigenvalues (= variance explained)
+        IN = open(args.pcfile)
+        IN.readline()
+        eigens = IN.readline().strip().split('\t')
+        IN.close()
+        
+        # Convert data values to variance explained
+        eigens = [float(e) for e in eigens]
+        total_variance = sum(eigens)
+        data = data / total_variance
+
     # data.index = [prettify_terms(i) for i in data.index]
 
     # Make graphic
@@ -40,8 +53,8 @@ def main():
     ax_raw = fig.add_subplot(grid[:,0])
     ax_fract = fig.add_subplot(grid[:,1])
 
-    plot_bars(data, ax_raw, normalize=False)
-    plot_bars(data, ax_fract, normalize=True)
+    plot_bars(data, ax_raw, normalize=False, percent=args.percent)
+    plot_bars(data, ax_fract, normalize=True, percent=args.percent)
 
 
     # Save image
@@ -54,6 +67,8 @@ def parse_args():
     parser.add_argument("-i", "--infile")
     parser.add_argument("-o", "--outprefix")
     parser.add_argument("-n", "--num-pcs", type=int, help='Number of PCs to plot')
+    parser.add_argument("--percent", default=False, action="store_true", help="Output percent variance explained instead of raw; requires the original QIIME PC file to be passed")
+    parser.add_argument("-p", "--pcfile", help="Original QIIME PC file to be passed")
     parser.add_argument("--debug", default=False, action="store_true")
     args = parser.parse_args()
 
@@ -64,7 +79,7 @@ def parse_args():
     return parser.parse_args()
 
 
-def plot_bars(data, ax, normalize=False):
+def plot_bars(data, ax, normalize=False, percent=False):
     if normalize:
         for col in data.columns:
             data[col] = data[col] / np.nansum(data[col])
@@ -84,7 +99,12 @@ def plot_bars(data, ax, normalize=False):
 
     # Axis labels
     ax.set_xlabel("Principal Coordinate #", weight="bold", fontsize='x-large')
-    ax.set_ylabel("Proportional Variance Explained" if normalize else "Raw Variance Explained", weight="bold", fontsize='x-large')
+    ylabel = "Raw Variance Explained"
+    if normalize: ylabel = "Normalized Variance Explained"
+    if percent and not normalize: ylabel = "Proportion Total Variance" 
+    ax.set_ylabel(ylabel, weight="bold", fontsize='x-large')
+
+    # Other axis bits
     xticks = np.arange(1, len(data.columns)+1) - 0.5
     xlabels = [str(int(x)) for x in np.ceil(xticks)]
     ax.set_xticks(xticks)
